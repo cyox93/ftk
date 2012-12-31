@@ -50,7 +50,11 @@ static Ret  ftk_app_window_on_event(FtkWidget* thiz, FtkEvent* event)
 	DECL_PRIV1(thiz, priv);
 
 	if(event->type == FTK_EVT_KEY_UP 
+#ifndef __KNP__
 		&& event->u.key.code == FTK_KEY_MENU
+#else
+		&& event->u.key.code == FTK_KEY_MENU
+#endif
 		&& priv->on_prepare_options_menu != NULL)
 	{
 		FtkWidget* menu_panel = ftk_menu_panel_create();
