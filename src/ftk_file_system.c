@@ -49,6 +49,7 @@ static const FtkKeyValue g_ext_type_map[] =
 	{".wav",  "audio/wav"},
 	{".amr",  "audio/amr"},
 	{".ogg",  "audio/ogg"},
+	{".mpg",  "video/mpeg"},
 	{"", ""}
 };
 

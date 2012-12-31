@@ -576,7 +576,11 @@ Ret		   ftk_file_browser_load(FtkWidget* thiz)
 			{
 				ftk_strs_cat(path, FTK_MAX_PATH, priv->path, "/", info.name, NULL);
 				mime_type = ftk_file_get_mime_type(path);
+#ifndef __KNP__
 				if(strstr(priv->filter_mime_type, mime_type) != NULL)
+#else
+				if(strstr(priv->filter_mime_type, mime_type) == NULL)
+#endif
 				{
 					continue;
 				}
