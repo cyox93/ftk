@@ -2,7 +2,11 @@ ftkdatadir=$(datadir)/ftk/base/data
 
 ftkdata_DATA=
 if FONT_ENGINE_FREETYPE
+if ENABLE_KNP
+ftkdata_DATA+=$(srcdir)/NanumGothic.ttf
+else
 ftkdata_DATA+=$(srcdir)/font.ttf
+endif
 endif
 
 if FONT_ENGINE_DEFAULT

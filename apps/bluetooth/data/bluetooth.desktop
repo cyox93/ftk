@@ -1,0 +1,3 @@
+<applications>
+<application name="Bluetooth" exec="app-bluetooth" init="ftk_app_bluetooth_create" />
+</applications>

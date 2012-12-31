@@ -1,6 +1,10 @@
 include $(abs_top_builddir)/src/rules.mk
 
+if ENABLE_KNP
+SUBDIRS=. im os backend compiler
+else
 SUBDIRS=. im os backend compiler demos test
+endif
 
 lib_LTLIBRARIES=libftk.la
 
@@ -103,7 +107,11 @@ endif
 if FTK_CANVAS_DEFAULT
 
 if FONT_ENGINE_FREETYPE
+if ENABLE_KNP
+libftk_la_CFLAGS+=-DFTK_FONT="\"NanumGothic.ttf\"" 
+else
 libftk_la_CFLAGS+=-DFTK_FONT="\"font.ttf\"" 
+endif
 endif
 
 if FONT_ENGINE_DEFAULT

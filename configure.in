@@ -262,6 +262,12 @@ if test "$enable_profile" = "yes"; then
   CFLAGS="$CFLAGS -DFTK_PROFILE -DFTK_MEMORY_PROFILE"
 fi
 
+AM_CONDITIONAL(ENABLE_KNP,  test "$enable_knp" = "yes")
+
+if test "$enable_knp" = "yes"; then
+  CFLAGS="$CFLAGS -D__KNP__"
+fi
+
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
 AC_TYPE_SIZE_T
@@ -334,6 +340,18 @@ AC_CONFIG_FILES([ftk.pc
                 apps/gallery/icons/Makefile
                 apps/gallery/lua/Makefile
                 apps/gallery/data/Makefile
+                apps/bluetooth/Makefile
+                apps/bluetooth/icons/Makefile
+                apps/bluetooth/data/Makefile
+                apps/clock/Makefile
+                apps/clock/icons/Makefile
+                apps/clock/data/Makefile
+                apps/movie/Makefile
+                apps/movie/icons/Makefile
+                apps/movie/data/Makefile
+                apps/music/Makefile
+                apps/music/icons/Makefile
+                apps/music/data/Makefile
                 tools/Makefile
                 tools/cross-build/Makefile
                 tools/fontextract/Makefile
