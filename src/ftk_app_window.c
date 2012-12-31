@@ -53,7 +53,7 @@ static Ret  ftk_app_window_on_event(FtkWidget* thiz, FtkEvent* event)
 #ifndef __KNP__
 		&& event->u.key.code == FTK_KEY_MENU
 #else
-		&& event->u.key.code == FTK_KEY_MENU
+		&& (event->u.key.code == FTK_KEY_CAPSLOCK || event->u.key.code == FTK_KEY_ESC)
 #endif
 		&& priv->on_prepare_options_menu != NULL)
 	{
