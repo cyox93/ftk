@@ -1,13 +1,31 @@
+#include <time.h>
 #include "ftk_xul.h"
 #include "ftk_expr.h"
 #include "ftk_app_clock.h"
+
+typedef enum __AdjustButtonID {
+	_CLOCK_ADJUST_BUTTON_HOUR_UP = 100,
+	_CLOCK_ADJUST_BUTTON_MINUTE_UP,
+	_CLOCK_ADJUST_BUTTON_HOUR_DOWN,
+	_CLOCK_ADJUST_BUTTON_MINUTE_DOWN,
+} _AdjustButtonID;
+
+typedef enum __ClockImageID {
+	_CLOCK_IMAGE_HOUR_10 = 200,
+	_CLOCK_IMAGE_HOUR_01,
+	_CLOCK_IMAGE_COLON,
+	_CLOCK_IMAGE_MINUTE_10,
+	_CLOCK_IMAGE_MINUTE_01,
+} _ClockImageID;
+
+static FtkBitmap *_digit[10];
+static int _hour;
+static int _min;
 
 typedef struct _PrivInfo
 {
 	FtkBitmap* icon;
 }PrivInfo;
-
-#define IDC_ENTRY 100
 
 static Ret ftk_clock_on_button_clicked(void* ctx, void* obj);
 
@@ -23,127 +41,142 @@ const char* ftk_translate_path(const char* path, char out_path[FTK_MAX_PATH+1])
 	return out_path;
 }
 
-const char* buttons[] =
+static Ret _clock_set_time(FtkWidget *thiz)
 {
-	"0",
-	"1",
-	"2",
-	"3",
-	"4",
-	"5",
-	"6",
-	"7",
-	"8",
-	"9",
-	".",
-	"+",
-	"-",
-	"*",
-	"/",
-	"(",
-	")",
-	"=",
-	"<--",
-	"Quit"
-};
+	FtkWidget *image;
+
+	image = ftk_widget_lookup(thiz, _CLOCK_IMAGE_HOUR_10);
+	ftk_bitmap_ref(_digit[_hour/10]);
+	ftk_image_set_image(image, _digit[_hour/10]);
+
+	image = ftk_widget_lookup(thiz, _CLOCK_IMAGE_HOUR_01);
+	ftk_bitmap_ref(_digit[_hour%10]);
+	ftk_image_set_image(image, _digit[_hour%10]);
+
+	image = ftk_widget_lookup(thiz, _CLOCK_IMAGE_MINUTE_10);
+	ftk_bitmap_ref(_digit[_min/10]);
+	ftk_image_set_image(image, _digit[_min/10]);
+
+	image = ftk_widget_lookup(thiz, _CLOCK_IMAGE_MINUTE_01);
+	ftk_bitmap_ref(_digit[_min%10]);
+	ftk_image_set_image(image, _digit[_min%10]);
+
+	return RET_OK;
+}
 
 static FtkWidget* ftk_clock_create_window(void)
 {
 	int i = 0;
-	int j = 0;
-	int x = 0;
-	int y = 0;
-	int row = 0;
-	int col = 0;
-	int small = 0;
-	int xoffset = 0;
-	int yoffset = 0;
-	int width   = 0;
-	int height  = 0;
-	int v_margin  = 5;
-	int h_margin  = 5;
-	int item_width = 0;
-	int item_height = 0;
 	FtkGc gc = {0};
-	FtkWidget* entry = NULL;
 	FtkWidget* button = NULL;
+	FtkWidget* image = NULL;
+	FtkBitmap* bitmap = NULL;
 	FtkBitmap* bitmap_normal = NULL;
 	FtkBitmap* bitmap_active = NULL;
 	FtkBitmap* bitmap_focus = NULL;
 	char path[FTK_MAX_PATH+1] = {0};
+	char filename[FTK_MAX_PATH] = {0};
+
+	time_t now = time(0);
+	struct tm* t = localtime(&now);
+
 	FtkWidget* win =  ftk_app_window_create();
 	ftk_window_set_animation_hint(win, "app_main_window");
-	width = ftk_widget_width(win);
-	height = ftk_widget_height(win);
-	entry = ftk_entry_create(win, 0, 0, width, 30);
-	ftk_widget_set_id(entry, IDC_ENTRY);
-	height -= ftk_widget_height(entry);
 
-	row = width > height ? 4 : 5;
-	col = width > height ? 5 : 4;
-
-	item_width = width / col;
-	item_height = height /row;
-	small = (item_width < 60 || item_height < 60) ? 1 : 0;
-
-	item_width = item_height = small ? 36 : 60;
-	
-	h_margin = width/col - item_width;
-	h_margin = h_margin > 5 ? 5 : h_margin;
-
-	v_margin = height/row - item_height;
-	v_margin = v_margin > 5 ? 5 : v_margin;
-
-	xoffset = (width - (h_margin + item_width) * col) >> 1;
-	yoffset = (height - (v_margin + item_height) * row) >> 1;
-
-	xoffset = xoffset < 0 ? 0 : xoffset;
-	yoffset = yoffset < 0 ? 0 : yoffset;
-
-	yoffset += ftk_widget_height(entry);
 	gc.mask = FTK_GC_BITMAP;
-	if(small)
-	{
-		bitmap_normal =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(), ftk_translate_path("icons/button-small.png", path));
-		bitmap_active =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(), ftk_translate_path("icons/button-pressed-small.png", path));
-		bitmap_focus =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(), ftk_translate_path("icons/button-selected-small.png", path));
-	}
-	else
-	{
-		bitmap_normal =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(), ftk_translate_path("icons/button.png", path));
-		bitmap_active =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(), ftk_translate_path("icons/button-pressed.png", path));
-		bitmap_focus =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(), ftk_translate_path("icons/button-selected.png", path));
-	}
 
-	for(i = 0; i < row; i++)
-	{
-		y = yoffset + i * (item_height + v_margin);
-		for(j = 0; j < col; j++)
-		{
-			const char* text = buttons[i * col + j];
-			if(text != NULL)
-			{
-				x = xoffset + j * (item_width + h_margin);
-				button = ftk_button_create(win, x, y, item_width, item_height);
-				ftk_widget_set_text(button, text);
-				ftk_button_set_clicked_listener(button, ftk_clock_on_button_clicked, win);
-				gc.bitmap = bitmap_normal;
-				ftk_widget_set_gc(button, FTK_WIDGET_NORMAL, &gc);
-				
-				gc.bitmap = bitmap_focus;
-				ftk_widget_set_gc(button, FTK_WIDGET_FOCUSED, &gc);
-				
-				gc.bitmap = bitmap_active;
-				ftk_widget_set_gc(button, FTK_WIDGET_ACTIVE, &gc);
-			}
-		}
+	bitmap_normal =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(),
+			ftk_translate_path("icons/up_normal.png", path));
+	bitmap_active =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(),
+			ftk_translate_path("icons/up_pressed.png", path));
+	bitmap_focus =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(),
+			ftk_translate_path("icons/up_selected.png", path));
+
+
+	for (i = 0; i < 2; i++) {
+		button = ftk_button_create(win, 10 + (i * 120), 50, 100, 50);
+		ftk_widget_set_id(button, _CLOCK_ADJUST_BUTTON_HOUR_UP + i);
+		ftk_button_set_clicked_listener(button, ftk_clock_on_button_clicked, win);
+
+		gc.bitmap = bitmap_normal;
+		ftk_widget_set_gc(button, FTK_WIDGET_NORMAL, &gc);
+	
+		gc.bitmap = bitmap_focus;
+		ftk_widget_set_gc(button, FTK_WIDGET_FOCUSED, &gc);
+		
+		gc.bitmap = bitmap_active;
+		ftk_widget_set_gc(button, FTK_WIDGET_ACTIVE, &gc);
 	}
 
 	ftk_bitmap_unref(bitmap_normal);
 	ftk_bitmap_unref(bitmap_active);
 	ftk_bitmap_unref(bitmap_focus);
 
+	bitmap_normal =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(),
+			ftk_translate_path("icons/down_normal.png", path));
+	bitmap_active =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(),
+			ftk_translate_path("icons/down_pressed.png", path));
+	bitmap_focus =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(),
+			ftk_translate_path("icons/down_selected.png", path));
+
+	for (i = 0; i < 2; i++) {
+		button = ftk_button_create(win, 10 + (i * 120), 200, 100, 50);
+		ftk_widget_set_id(button, _CLOCK_ADJUST_BUTTON_HOUR_DOWN + i);
+		ftk_button_set_clicked_listener(button, ftk_clock_on_button_clicked, win);
+		gc.bitmap = bitmap_normal;
+		ftk_widget_set_gc(button, FTK_WIDGET_NORMAL, &gc);
+	
+		gc.bitmap = bitmap_focus;
+		ftk_widget_set_gc(button, FTK_WIDGET_FOCUSED, &gc);
+		
+		gc.bitmap = bitmap_active;
+		ftk_widget_set_gc(button, FTK_WIDGET_ACTIVE, &gc);
+	}
+
+	ftk_bitmap_unref(bitmap_normal);
+	ftk_bitmap_unref(bitmap_active);
+	ftk_bitmap_unref(bitmap_focus);
+
+	image = ftk_image_create(win, 10, 110, 50, 80);
+	ftk_widget_set_id(image, _CLOCK_IMAGE_HOUR_10);
+
+	image = ftk_image_create(win, 60, 110, 50, 80);
+	ftk_widget_set_id(image, _CLOCK_IMAGE_HOUR_01);
+
+	image = ftk_image_create(win, 130, 110, 50, 80);
+	ftk_widget_set_id(image, _CLOCK_IMAGE_MINUTE_10);
+
+	image = ftk_image_create(win, 180, 110, 50, 80);
+	ftk_widget_set_id(image, _CLOCK_IMAGE_MINUTE_01);
+
+	for (i = 0; i < 10; i++) {
+		ftk_snprintf(filename, sizeof(filename)-1, "icons/%d.png", i);
+		_digit[i] =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(),
+			ftk_translate_path(filename, path));
+	}
+
+	image = ftk_image_create(win, 110, 110, 20, 80);
+	ftk_widget_set_id(image, _CLOCK_IMAGE_COLON);
+
+	bitmap =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(),
+		ftk_translate_path("icons/colon.png", path));
+	ftk_image_set_image(image, bitmap);
+
+	_hour = t->tm_hour;
+	_min = t->tm_min;
+
+	_clock_set_time(win);
+
 	return win;
+}
+
+static Ret ftk_clock_on_set(void* ctx, void* obj)
+{
+	// need to set time 
+
+	ftk_widget_unref(ctx);
+
+	return RET_OK;
 }
 
 static Ret ftk_clock_on_shutdown(void* ctx, void* obj)
@@ -155,39 +188,63 @@ static Ret ftk_clock_on_shutdown(void* ctx, void* obj)
 
 static Ret ftk_clock_on_prepare_options_menu(void* ctx, FtkWidget* menu_panel)
 {
-	FtkWidget* item = ftk_menu_item_create(menu_panel);
-	ftk_widget_set_text(item, _("Quit"));
+	FtkWidget* item;
+	
+	item = ftk_menu_item_create(menu_panel);
+	ftk_widget_set_text(item, _("Set"));
+	ftk_menu_item_set_clicked_listener(item, ftk_clock_on_set, ctx);
+	ftk_widget_show(item, 1);
+
+	item = ftk_menu_item_create(menu_panel);
+	ftk_widget_set_text(item, _("Cancel"));
 	ftk_menu_item_set_clicked_listener(item, ftk_clock_on_shutdown, ctx);
 	ftk_widget_show(item, 1);
 
 	return RET_OK;
 }
 
+static int _update_time(FtkWidget *thiz, FtkWidget *button)
+{
+	int id = ftk_widget_id(button);
+
+	switch (id) {
+		case _CLOCK_ADJUST_BUTTON_HOUR_UP:
+			_hour++;
+			if (_hour > 23) _hour = 0;
+			break;
+
+		case _CLOCK_ADJUST_BUTTON_HOUR_DOWN:
+			_hour--;
+			if (_hour < 0) _hour = 23;
+			break;
+
+		case _CLOCK_ADJUST_BUTTON_MINUTE_UP:
+			_min++;
+			if (_min > 59) _min = 0;
+			break;
+
+		case _CLOCK_ADJUST_BUTTON_MINUTE_DOWN:
+			_min--;
+			if (_min < 0) _min = 59;
+			break;
+		default:
+			return RET_FAIL;
+	}
+
+	_clock_set_time(thiz);
+
+	return RET_OK;
+}
+
 static Ret ftk_clock_on_button_clicked(void* ctx, void* obj)
 {
-	FtkWidget* entry = ftk_widget_lookup(ctx, IDC_ENTRY);
-	const char* text = ftk_widget_get_text(obj);
-	return_val_if_fail(text != NULL && entry != NULL, RET_FAIL);
-	
-	if(text[0] == '=')
-	{
-		char buff[32] = {0};
-		double val = ftk_expr_eval(ftk_entry_get_text(entry));
-		ftk_snprintf(buff, sizeof(buff), "%lf", val);
-		ftk_entry_set_text(entry, buff);
-	}
-	else if(text[0] == '<')
-	{
-		ftk_entry_set_text(entry, "");
-	}
-	else if(text[0] == 'Q' || strcmp(text, _("Quit")) == 0)
-	{
-		ftk_widget_unref(ctx);
-	}
-	else
-	{
-		ftk_entry_insert_text(entry, -1, text);
-	}
+	FtkWidget* button = (FtkWidget *)obj;
+	FtkWidget* win = (FtkWidget *)ctx;
+
+	return_val_if_fail(obj != NULL && win != NULL, RET_FAIL);
+
+	_update_time(win, button);
+	_clock_set_time(win);
 
 	return RET_OK;
 }
@@ -235,9 +292,17 @@ static Ret ftk_app_clock_run(FtkApp* thiz, int argc, char* argv[])
 
 static void ftk_app_clock_destroy(FtkApp* thiz)
 {
+	int i;
+
 	if(thiz != NULL)
 	{
 		DECL_PRIV(thiz, priv);
+
+		for (i = 0; i < 10; i++) {
+			if (_digit[i])
+				ftk_bitmap_unref(_digit[i]);
+		}
+
 		ftk_bitmap_unref(priv->icon);
 		FTK_FREE(thiz);
 	}
