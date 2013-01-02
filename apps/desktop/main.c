@@ -46,9 +46,17 @@ typedef struct _FtkDesktop
 }FtkDesktop;
 
 static FtkDesktop g_desktop;
+static FtkWidget* _win = NULL;
+static FtkSource* g_timer = NULL;
+
+static Ret desktop_update_time(void* ctx);
 
 static Ret desktop_on_button_close_applist_clicked(void* ctx, void* obj)
 {
+	if (g_timer)
+		ftk_source_enable(g_timer);
+
+	desktop_update_time(_win);
 	ftk_widget_show(ctx, 0);
 
 	return RET_OK;
@@ -106,6 +114,9 @@ static Ret desktop_on_button_open_applist_clicked(void* ctx, void* obj)
 	FtkIconViewItem item;
 	FtkWidget* icon_view = NULL;
 	
+	if (g_timer)
+		ftk_source_disable(g_timer);
+
 	if(g_desktop.applist_win != NULL)
 	{
 		ftk_widget_show_all(g_desktop.applist_win, 1);
@@ -278,9 +289,7 @@ static void desktop_destroy(void* data)
 int FTK_MAIN(int argc, char* argv[])
 {
 	int i = 0;
-	FtkWidget* win = NULL;
 	FtkWidget* button = NULL;
-	FtkSource* timer = NULL;
 	char path[FTK_MAX_PATH] = {0};
 	const char* root_path[FTK_ICON_PATH_NR] = {0};
 
@@ -342,16 +351,16 @@ int FTK_MAIN(int argc, char* argv[])
 	root_path[1] = NULL;
 
 	g_desktop.icon_cache = ftk_icon_cache_create(root_path, NULL);
-	win = desktop_load_xul(g_desktop.is_horizonal ? "xul/desktop-h.xul" : "xul/desktop-v.xul"); 
-	ftk_app_window_set_on_prepare_options_menu(win, desktop_on_prepare_options_menu, win);
-	button = ftk_widget_lookup(win, 100);
-	ftk_button_set_clicked_listener(button, desktop_on_button_open_applist_clicked, win);
-	ftk_widget_show_all(win, 1);
+	_win = desktop_load_xul(g_desktop.is_horizonal ? "xul/desktop-h.xul" : "xul/desktop-v.xul"); 
+	ftk_app_window_set_on_prepare_options_menu(_win, desktop_on_prepare_options_menu, _win);
+	button = ftk_widget_lookup(_win, 100);
+	ftk_button_set_clicked_listener(button, desktop_on_button_open_applist_clicked, _win);
+	ftk_widget_show_all(_win, 1);
 
-	desktop_update_time(win);
-	timer = ftk_source_timer_create(60000, desktop_update_time, win);
-	ftk_main_loop_add_source(ftk_default_main_loop(), timer);
-	ftk_widget_set_user_data(win, desktop_destroy, &g_desktop);
+	desktop_update_time(_win);
+	g_timer = ftk_source_timer_create(60000, desktop_update_time, _win);
+	ftk_main_loop_add_source(ftk_default_main_loop(), g_timer);
+	ftk_widget_set_user_data(_win, desktop_destroy, &g_desktop);
 
 	ftk_run();
 

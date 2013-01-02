@@ -172,7 +172,10 @@ static FtkWidget* ftk_clock_create_window(void)
 
 static Ret ftk_clock_on_set(void* ctx, void* obj)
 {
-	// need to set time 
+	char temp[100];
+
+	sprintf(temp, "/bin/date -s %02d:%02d && /sbin/hwclock -w", _hour, _min);
+	system(temp);
 
 	ftk_widget_unref(ctx);
 
