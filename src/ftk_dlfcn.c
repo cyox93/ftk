@@ -39,6 +39,8 @@ void* ftk_dlopen(const char* filename)
 	void* handle = NULL;
 	return_val_if_fail(filename != NULL, NULL);
 
+	printf("%s : dlopen %s\n", __func__, filename);
+
 	if((handle = dlopen(filename, RTLD_NOW)) == NULL)
 	{
 		ftk_logd("dlopen %s failed(%s)\n", filename, dlerror());
@@ -72,7 +74,11 @@ void  ftk_dlclose(void* handle)
 
 char* ftk_dl_file_name(const char* name, char filename[FTK_MAX_PATH+1])
 {
+#ifndef __KNP__
 	ftk_snprintf(filename, FTK_MAX_PATH, "lib%s.so", name);
+#else
+	ftk_snprintf(filename, FTK_MAX_PATH, "lib%s.so.0", name);
+#endif
 
 	return filename;
 }
