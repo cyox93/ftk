@@ -2,14 +2,26 @@
 #include "ftk_expr.h"
 #include "ftk_app_bluetooth.h"
 
+#include "bt.h"
+
+//#define __TEST__
+
 typedef struct _PrivInfo
 {
 	FtkBitmap* icon;
+
 }PrivInfo;
 
-#define IDC_ENTRY 100
+#define IDC_INFO 100
+#define IDC_LIST 101
 
-static Ret ftk_bluetooth_on_button_clicked(void* ctx, void* obj);
+static FtkListModel* _model = NULL;
+static FtkSource *_timer = NULL;
+
+static BtHd _bt;
+BtDevice _devices[BT_SCAN_MAX];
+int _bt_dev_num;
+int _bt_connect;
 
 const char* ftk_translate_path(const char* path, char out_path[FTK_MAX_PATH+1])
 {
@@ -23,131 +35,157 @@ const char* ftk_translate_path(const char* path, char out_path[FTK_MAX_PATH+1])
 	return out_path;
 }
 
-const char* buttons[] =
+static Ret _bt_connect_start(void *ctx)
 {
-	"0",
-	"1",
-	"2",
-	"3",
-	"4",
-	"5",
-	"6",
-	"7",
-	"8",
-	"9",
-	".",
-	"+",
-	"-",
-	"*",
-	"/",
-	"(",
-	")",
-	"=",
-	"<--",
-	"Quit"
-};
+	int ret;
+	char temp[100];
+
+	FtkWidget *info = ftk_widget_lookup((FtkWidget *)ctx, IDC_INFO);
+
+	ftk_main_loop_remove_source(ftk_default_main_loop(), _timer);
+	_timer = NULL;
+
+	printf("%s : try to connect [%d]\n", __func__, _bt_connect);
+
+	ret = bt_connect(_bt, &_devices[_bt_connect]);
+	if (ret < 0) {
+		sprintf(temp, "접속 실패");
+	} else {
+		sprintf(temp, "연결 : %s", _devices[_bt_connect].name);
+	}
+
+	if (info) ftk_widget_set_text(info, temp);
+
+
+	return RET_OK;
+}
+
+static Ret _bt_on_item_clicked(void *ctx, void *list)
+{
+	FtkListItemInfo* info = NULL;
+	FtkListModel* model = ftk_list_view_get_model(list);
+	int i = ftk_list_view_get_selected(list);
+
+	printf("%s : clicked index %d\n", __func__, i);
+
+	ftk_list_model_get_data(model, i, (void**)&info);
+	if(info != NULL && !info->disable)
+	{
+		info->state = !info->state;
+	}
+
+	if (i < _bt_dev_num) {
+		FtkWidget *label = ftk_widget_lookup((FtkWidget *)ctx, IDC_INFO);
+		if (label) ftk_widget_set_text(label, "접속 중");
+
+		_bt_connect = i;
+		_timer = ftk_source_timer_create(300, _bt_connect_start, ctx);
+		ftk_main_loop_add_source(ftk_default_main_loop(), _timer);
+	}
+
+	return RET_OK;
+}
+
+static Ret _bt_scan_start(void *ctx)
+{
+	FtkWidget *info;
+	char temp[100];
+	int i;
+
+	info = ftk_widget_lookup((FtkWidget *)ctx, IDC_INFO);
+
+	ftk_main_loop_remove_source(ftk_default_main_loop(), _timer);
+	_timer = NULL;
+
+	_bt_dev_num = bt_scan(_bt, _devices, BT_SCAN_MAX);
+	if (_bt_dev_num > 0) {
+		sprintf(temp, "검색 결과 : %d 개", _bt_dev_num);
+		for (i = 0; i < _bt_dev_num; i++) {
+			FtkListItemInfo info = {0};
+
+			info.text = _devices[i].name;
+			ftk_list_model_add(_model, &info);
+		}
+
+	} else if (_bt_dev_num == 0) {
+		sprintf(temp, "검색 결과 없음");
+	} else {
+#ifdef __TEST__
+		_bt_dev_num = 9;
+		for (i = 0; i < 9; i++) {
+			FtkListItemInfo info = {0};
+
+			sprintf(temp, "test %d", i);
+			info.text = temp;
+			ftk_list_model_add(_model, &info);
+		}
+#endif
+		sprintf(temp, "검색 실패");
+	}
+
+	if (info) ftk_widget_set_text(info, temp);
+
+	return RET_OK;
+}
 
 static FtkWidget* ftk_bluetooth_create_window(void)
 {
-	int i = 0;
-	int j = 0;
-	int x = 0;
-	int y = 0;
-	int row = 0;
-	int col = 0;
-	int small = 0;
-	int xoffset = 0;
-	int yoffset = 0;
-	int width   = 0;
-	int height  = 0;
-	int v_margin  = 5;
-	int h_margin  = 5;
-	int item_width = 0;
-	int item_height = 0;
-	FtkGc gc = {0};
-	FtkWidget* entry = NULL;
-	FtkWidget* button = NULL;
-	FtkBitmap* bitmap_normal = NULL;
-	FtkBitmap* bitmap_active = NULL;
-	FtkBitmap* bitmap_focus = NULL;
-	char path[FTK_MAX_PATH+1] = {0};
+	FtkWidget *widget;
+	FtkListRender* render = NULL;
+
 	FtkWidget* win =  ftk_app_window_create();
 	ftk_window_set_animation_hint(win, "app_main_window");
-	width = ftk_widget_width(win);
-	height = ftk_widget_height(win);
-	entry = ftk_entry_create(win, 0, 0, width, 30);
-	ftk_widget_set_id(entry, IDC_ENTRY);
-	height -= ftk_widget_height(entry);
 
-	row = width > height ? 4 : 5;
-	col = width > height ? 5 : 4;
+	widget = ftk_label_create(win, 10, 10, 220, 30);
+	ftk_widget_set_id(widget, IDC_INFO);
+	ftk_widget_set_text(widget, "검색 중");
 
-	item_width = width / col;
-	item_height = height /row;
-	small = (item_width < 60 || item_height < 60) ? 1 : 0;
+	widget = ftk_list_view_create(win, 10, 40, 220, 200);
+	ftk_list_view_set_clicked_listener(widget, _bt_on_item_clicked, win);
+	ftk_widget_set_id(widget, IDC_LIST);
 
-	item_width = item_height = small ? 36 : 60;
-	
-	h_margin = width/col - item_width;
-	h_margin = h_margin > 5 ? 5 : h_margin;
+	_model = ftk_list_model_default_create(10);
+	render = ftk_list_render_default_create();
 
-	v_margin = height/row - item_height;
-	v_margin = v_margin > 5 ? 5 : v_margin;
+	ftk_list_render_default_set_marquee_attr(render,
+			FTK_MARQUEE_AUTO | FTK_MARQUEE_RIGHT2LEFT | FTK_MARQUEE_FOREVER);
 
-	xoffset = (width - (h_margin + item_width) * col) >> 1;
-	yoffset = (height - (v_margin + item_height) * row) >> 1;
+	ftk_list_view_init(widget, _model, render, 40);
+	ftk_list_model_unref(_model);
 
-	xoffset = xoffset < 0 ? 0 : xoffset;
-	yoffset = yoffset < 0 ? 0 : yoffset;
-
-	yoffset += ftk_widget_height(entry);
-	gc.mask = FTK_GC_BITMAP;
-	if(small)
-	{
-		bitmap_normal =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(), ftk_translate_path("icons/button-small.png", path));
-		bitmap_active =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(), ftk_translate_path("icons/button-pressed-small.png", path));
-		bitmap_focus =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(), ftk_translate_path("icons/button-selected-small.png", path));
-	}
-	else
-	{
-		bitmap_normal =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(), ftk_translate_path("icons/button.png", path));
-		bitmap_active =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(), ftk_translate_path("icons/button-pressed.png", path));
-		bitmap_focus =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(), ftk_translate_path("icons/button-selected.png", path));
-	}
-
-	for(i = 0; i < row; i++)
-	{
-		y = yoffset + i * (item_height + v_margin);
-		for(j = 0; j < col; j++)
-		{
-			const char* text = buttons[i * col + j];
-			if(text != NULL)
-			{
-				x = xoffset + j * (item_width + h_margin);
-				button = ftk_button_create(win, x, y, item_width, item_height);
-				ftk_widget_set_text(button, text);
-				ftk_button_set_clicked_listener(button, ftk_bluetooth_on_button_clicked, win);
-				gc.bitmap = bitmap_normal;
-				ftk_widget_set_gc(button, FTK_WIDGET_NORMAL, &gc);
-				
-				gc.bitmap = bitmap_focus;
-				ftk_widget_set_gc(button, FTK_WIDGET_FOCUSED, &gc);
-				
-				gc.bitmap = bitmap_active;
-				ftk_widget_set_gc(button, FTK_WIDGET_ACTIVE, &gc);
-			}
-		}
-	}
-
-	ftk_bitmap_unref(bitmap_normal);
-	ftk_bitmap_unref(bitmap_active);
-	ftk_bitmap_unref(bitmap_focus);
+	_timer = ftk_source_timer_create(300, _bt_scan_start, win);
+	ftk_main_loop_add_source(ftk_default_main_loop(), _timer);
 
 	return win;
 }
 
+static Ret ftk_bluetooth_on_scan(void* ctx, void* obj)
+{
+	FtkWidget *info;
+
+	if (_timer) {
+		ftk_main_loop_remove_source(ftk_default_main_loop(), _timer);
+		_timer = NULL;
+	}
+
+	info = ftk_widget_lookup((FtkWidget *)ctx, IDC_INFO);
+	if (info) ftk_widget_set_text(info, "검색 중");
+
+	ftk_list_model_reset(_model);
+
+	_timer = ftk_source_timer_create(300, _bt_scan_start, ctx);
+	ftk_main_loop_add_source(ftk_default_main_loop(), _timer);
+
+	return RET_OK;
+}
+
 static Ret ftk_bluetooth_on_shutdown(void* ctx, void* obj)
 {
+	if (_timer) {
+		ftk_main_loop_remove_source(ftk_default_main_loop(), _timer);
+		_timer = NULL;
+	}
+
 	ftk_widget_unref(ctx);
 
 	return RET_OK;
@@ -156,38 +194,14 @@ static Ret ftk_bluetooth_on_shutdown(void* ctx, void* obj)
 static Ret ftk_bluetooth_on_prepare_options_menu(void* ctx, FtkWidget* menu_panel)
 {
 	FtkWidget* item = ftk_menu_item_create(menu_panel);
+	ftk_widget_set_text(item, _("검색"));
+	ftk_menu_item_set_clicked_listener(item, ftk_bluetooth_on_scan, ctx);
+	ftk_widget_show(item, 1);
+
+	item = ftk_menu_item_create(menu_panel);
 	ftk_widget_set_text(item, _("Quit"));
 	ftk_menu_item_set_clicked_listener(item, ftk_bluetooth_on_shutdown, ctx);
 	ftk_widget_show(item, 1);
-
-	return RET_OK;
-}
-
-static Ret ftk_bluetooth_on_button_clicked(void* ctx, void* obj)
-{
-	FtkWidget* entry = ftk_widget_lookup(ctx, IDC_ENTRY);
-	const char* text = ftk_widget_get_text(obj);
-	return_val_if_fail(text != NULL && entry != NULL, RET_FAIL);
-	
-	if(text[0] == '=')
-	{
-		char buff[32] = {0};
-		double val = ftk_expr_eval(ftk_entry_get_text(entry));
-		ftk_snprintf(buff, sizeof(buff), "%lf", val);
-		ftk_entry_set_text(entry, buff);
-	}
-	else if(text[0] == '<')
-	{
-		ftk_entry_set_text(entry, "");
-	}
-	else if(text[0] == 'Q' || strcmp(text, _("Quit")) == 0)
-	{
-		ftk_widget_unref(ctx);
-	}
-	else
-	{
-		ftk_entry_insert_text(entry, -1, text);
-	}
 
 	return RET_OK;
 }
@@ -218,6 +232,7 @@ static const char* ftk_app_bluetooth_get_name(FtkApp* thiz)
 
 static Ret ftk_app_bluetooth_run(FtkApp* thiz, int argc, char* argv[])
 {
+	
 	DECL_PRIV(thiz, priv);
 	FtkWidget* win = NULL;
 	return_val_if_fail(priv != NULL, RET_FAIL);
@@ -240,6 +255,11 @@ static void ftk_app_bluetooth_destroy(FtkApp* thiz)
 		DECL_PRIV(thiz, priv);
 		ftk_bitmap_unref(priv->icon);
 		FTK_FREE(thiz);
+
+		if (_bt) {
+			bt_close(_bt);
+			_bt = NULL;
+		}
 	}
 
 	return;
@@ -255,6 +275,8 @@ FtkApp* ftk_app_bluetooth_create(void)
 		thiz->get_icon = ftk_app_bluetooth_get_icon;
 		thiz->get_name = ftk_app_bluetooth_get_name;
 		thiz->destroy = ftk_app_bluetooth_destroy;
+
+		_bt = bt_open();
 	}
 
 	return thiz;
