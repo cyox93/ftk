@@ -171,6 +171,17 @@ static Ret ftk_clock_on_prepare_options_menu(void* ctx, FtkWidget* menu_panel)
 	return RET_OK;
 }
 
+static Ret _movie_user_on_event(FtkWidget* thiz, FtkEvent* event)
+{
+	if (event->type == FTK_EVT_MOUSE_UP)
+	{
+		system("killall mplayer");
+		ftk_widget_invalidate(thiz);
+	}
+
+	return RET_OK;
+}
+
 static Ret ftk_app_movie_run(FtkApp* thiz, int argc, char* argv[])
 {
 	FtkWidget *label;
@@ -179,6 +190,8 @@ static Ret ftk_app_movie_run(FtkApp* thiz, int argc, char* argv[])
 	ftk_window_set_animation_hint(win, "app_main_window");
 
 	ftk_widget_set_text(win, "영화");
+
+	ftk_app_window_set_user_on_event(win, _movie_user_on_event);
 
 	label = ftk_label_create(win, 10, 50, 220, 100);
 	ftk_widget_set_id(label, IDC_TITLE);

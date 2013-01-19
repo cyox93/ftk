@@ -43,6 +43,9 @@ FtkWidget* ftk_app_window_create(void);
 
 Ret ftk_app_window_set_on_prepare_options_menu(FtkWidget* thiz, 
 	FtkPrepareOptionsMenu on_prepare_options_menu, void* ctx);
+#ifdef __KNP__
+void ftk_app_window_set_user_on_event(FtkWidget *thiz, FtkWidgetOnEvent user_on_event);
+#endif
 
 FTK_END_DECLS
 

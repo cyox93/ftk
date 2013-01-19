@@ -43,6 +43,9 @@ typedef struct _AppWinPrivInfo
 	FtkWidgetOnEvent parent_on_event;
 	FtkWidgetOnPaint parent_on_paint;
 	FtkWidgetDestroy parent_destroy;
+#ifdef __KNP__
+	FtkWidgetOnEvent user_on_event;
+#endif
 }PrivInfo;
 
 static Ret  ftk_app_window_on_event(FtkWidget* thiz, FtkEvent* event)
@@ -81,6 +84,16 @@ static Ret  ftk_app_window_on_event(FtkWidget* thiz, FtkEvent* event)
 		return RET_REMOVE;
 	}
 
+#ifdef __KNP__
+	if (priv->user_on_event)
+	{
+		Ret ret = RET_OK;
+
+		ret = priv->user_on_event(thiz, event);
+		if (ret == RET_REMOVE)
+			return RET_REMOVE;
+	}
+#endif
 	return priv->parent_on_event(thiz, event);
 }
 
@@ -132,3 +145,10 @@ Ret ftk_app_window_set_on_prepare_options_menu(FtkWidget* thiz,
 	return RET_OK;
 }
 
+#ifdef __KNP__
+void ftk_app_window_set_user_on_event(FtkWidget *thiz, FtkWidgetOnEvent user_on_event)
+{
+	DECL_PRIV1(thiz, priv);
+	priv->user_on_event = user_on_event;
+}
+#endif
