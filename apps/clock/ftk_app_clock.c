@@ -83,6 +83,8 @@ static FtkWidget* ftk_clock_create_window(void)
 	FtkWidget* win =  ftk_app_window_create();
 	ftk_window_set_animation_hint(win, "app_main_window");
 
+	ftk_widget_set_text(win, "시계설정");
+
 	gc.mask = FTK_GC_BITMAP;
 
 	bitmap_normal =  ftk_bitmap_factory_load(ftk_default_bitmap_factory(),

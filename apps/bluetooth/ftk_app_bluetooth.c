@@ -136,6 +136,8 @@ static FtkWidget* ftk_bluetooth_create_window(void)
 	FtkWidget* win =  ftk_app_window_create();
 	ftk_window_set_animation_hint(win, "app_main_window");
 
+	ftk_widget_set_text(win, "블루투스");
+
 	widget = ftk_label_create(win, 10, 10, 220, 30);
 	ftk_widget_set_id(widget, IDC_INFO);
 	ftk_widget_set_text(widget, "검색 중");

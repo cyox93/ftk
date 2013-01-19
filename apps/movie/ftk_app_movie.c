@@ -178,6 +178,8 @@ static Ret ftk_app_movie_run(FtkApp* thiz, int argc, char* argv[])
 	FtkWidget *win = ftk_app_window_create();
 	ftk_window_set_animation_hint(win, "app_main_window");
 
+	ftk_widget_set_text(win, "영화");
+
 	label = ftk_label_create(win, 10, 50, 220, 100);
 	ftk_widget_set_id(label, IDC_TITLE);
 
