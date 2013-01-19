@@ -352,7 +352,9 @@ int FTK_MAIN(int argc, char* argv[])
 
 	g_desktop.icon_cache = ftk_icon_cache_create(root_path, NULL);
 	_win = desktop_load_xul(g_desktop.is_horizonal ? "xul/desktop-h.xul" : "xul/desktop-v.xul"); 
+#ifndef __KNP__
 	ftk_app_window_set_on_prepare_options_menu(_win, desktop_on_prepare_options_menu, _win);
+#endif
 	button = ftk_widget_lookup(_win, 100);
 	ftk_button_set_clicked_listener(button, desktop_on_button_open_applist_clicked, _win);
 	ftk_widget_show_all(_win, 1);
