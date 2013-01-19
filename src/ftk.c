@@ -378,9 +378,16 @@ static Ret button_close_top_clicked(void* ctx, void* obj)
 	{
 		if(!ftk_widget_has_attr(top_window, FTK_ATTR_IGNORE_CLOSE))
 		{
+#ifndef __KNP__
 			ftk_widget_set_user_data(title_widget, NULL, NULL);
 			ftk_logd("%s: close window %s\n", __func__, ftk_widget_get_text(top_window));
 			ftk_widget_unref(top_window);
+#else
+			FtkEvent event;
+			ftk_event_init(&event, FTK_EVT_KEY_UP);
+			event.u.key.code = FTK_KEY_ESC;
+			ftk_widget_event(top_window, &event);
+#endif
 		}
 		else
 		{
