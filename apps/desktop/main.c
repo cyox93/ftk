@@ -53,8 +53,7 @@ static Ret desktop_update_time(void* ctx);
 
 static Ret desktop_on_button_close_applist_clicked(void* ctx, void* obj)
 {
-	if (g_timer)
-		ftk_source_enable(g_timer);
+	ftk_main_loop_add_source(ftk_default_main_loop(), g_timer);
 
 	desktop_update_time(_win);
 	ftk_widget_show(ctx, 0);
@@ -113,9 +112,9 @@ static Ret desktop_on_button_open_applist_clicked(void* ctx, void* obj)
 	FtkWidget* button = NULL;
 	FtkIconViewItem item;
 	FtkWidget* icon_view = NULL;
-	
-	if (g_timer)
-		ftk_source_disable(g_timer);
+
+	ftk_source_ref(g_timer);
+	ftk_main_loop_remove_source(ftk_default_main_loop(), g_timer);
 
 	if(g_desktop.applist_win != NULL)
 	{
