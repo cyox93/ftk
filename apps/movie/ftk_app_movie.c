@@ -173,10 +173,16 @@ static Ret ftk_clock_on_prepare_options_menu(void* ctx, FtkWidget* menu_panel)
 
 static Ret _movie_user_on_event(FtkWidget* thiz, FtkEvent* event)
 {
+	FtkWidget* panel = NULL;
+
 	if (event->type == FTK_EVT_MOUSE_UP)
 	{
 		system("killall mplayer");
 		ftk_widget_invalidate(thiz);
+
+		panel = ftk_default_status_panel();
+		if (panel)
+			ftk_widget_invalidate(panel);
 	}
 
 	return RET_OK;
