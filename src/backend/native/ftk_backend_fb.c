@@ -24,6 +24,14 @@ static Ret ftk_init_input(void)
 		if(!(iter->d_type & DT_CHR)) continue;
 
 		ftk_snprintf(filename, sizeof(filename), "/dev/input/%s", iter->d_name);
+#ifdef __KNP__
+		if(strcmp(filename, "/dev/input/event1") == 0)
+		{
+			/*skip tsdev now, open it later.*/
+			continue;
+		}
+		else
+#endif
 #ifdef USE_TSLIB
 		if(strcmp(filename, tsdev) == 0)
 		{

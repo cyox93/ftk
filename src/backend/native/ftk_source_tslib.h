@@ -42,7 +42,11 @@
  * and ts_test works.
  */
 
+#ifndef __KNP__
 #define FTK_TSLIB_FILE "/dev/ts"
+#else
+#define FTK_TSLIB_FILE "/dev/input/touchscreen0"
+#endif
 FtkSource* ftk_source_tslib_create(const char* filename, FtkOnEvent on_event, void* ctx);
 
 #endif/*FTK_SOURCE_TSLIB_H*/
