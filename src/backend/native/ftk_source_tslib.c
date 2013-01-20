@@ -62,6 +62,9 @@ static Ret ftk_source_tslib_dispatch(FtkSource* thiz)
 	DECL_PRIV(thiz, priv);
 	struct ts_sample sample = {0};
 	return_val_if_fail(priv->ts != NULL, RET_FAIL);	
+#ifdef __KNP__
+_tslib_read:
+#endif
 	ret = ts_read(priv->ts, &sample, 1);
 	if(ret <= 0) return RET_OK;
 
@@ -100,6 +103,9 @@ static Ret ftk_source_tslib_dispatch(FtkSource* thiz)
 		priv->event.type = FTK_EVT_NOP;
 	}
 
+#ifdef __KNP__
+	goto _tslib_read;
+#endif
 	return RET_OK;
 }
 
