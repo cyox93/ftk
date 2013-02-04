@@ -51,7 +51,10 @@ static Ret _app_movie_selected(void* ctx, int index, const char* path)
 			ftk_widget_set_text(label, title);
 		}
 
-		sprintf(temp, "/usr/bin/mplayer %c%s%c &", '"', path, '"');
+		sprintf(temp, "cat %c%s%c > /dev/null", '"', path, '"');
+		system(temp);
+
+		sprintf(temp, "/usr/bin/mplayer -framedrop %c%s%c &", '"', path, '"');
 		system(temp);
 	}
 
