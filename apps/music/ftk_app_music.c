@@ -51,7 +51,10 @@ static Ret _app_music_selected(void* ctx, int index, const char* path)
 			ftk_widget_set_text(label, title);
 		}
 
-		sprintf(temp, "/usr/bin/madplay %c%s%c &", '"', path, '"');
+		sprintf(temp, "cat %c%s%c > /dev/null", '"', path, '"');
+		system(temp);
+
+		sprintf(temp, "/usr/bin/mplayer %c%s%c &", '"', path, '"');
 		system(temp);
 	}
 
@@ -90,7 +93,7 @@ static Ret ftk_music_on_button_clicked(void* ctx, void* obj)
 
 	return_val_if_fail(obj != NULL && win != NULL, RET_FAIL);
 
-	system("killall madplay");
+	system("killall mplayer");
 
 	switch (ftk_widget_id(button)) {
 	case IDC_PLAY:
@@ -152,7 +155,7 @@ static void _app_music_create_button(FtkWidget *win, int x, int id, const char *
 
 static Ret ftk_music_on_shutdown(void* ctx, void* obj)
 {
-	system("killall madplay");
+	system("killall mplayer");
 	ftk_widget_unref(ctx);
 
 	return RET_OK;
